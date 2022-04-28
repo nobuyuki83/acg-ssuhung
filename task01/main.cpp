@@ -12,24 +12,136 @@
 Eigen::Matrix<double,4,4,Eigen::RowMajor> GetHomographicTransformation(
     const double c1[4][2])
 {
+  // const double c0[4][2] = {
+  //     {0.0,0.0},
+  //     {0.0,1.0},
+  //     {1.0, 1.0},
+  //     {1.0, 0.0} };
   const double c0[4][2] = {
       {-0.5,-0.5},
       {+0.5,-0.5},
       {+0.5,+0.5},
       {-0.5,+0.5} };
+  
+
   Eigen::Matrix<double,4,4,Eigen::RowMajor> m;
-  // set identity as default
-    m <<
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1;
   // write some code to compute the 4x4 Homographic transformation matrix `m`;
   // `m` should transfer :
   // (c0[0][0],c0[][1],z) -> (c1[0][0],c1[0][1],z)
   // (c0[1][0],c0[][1],z) -> (c1[1][0],c1[1][1],z)
   // (c0[2][0],c0[][1],z) -> (c1[2][0],c1[2][1],z)
   // (c0[3][0],c0[][1],z) -> (c1[3][0],c1[3][1],z)
+
+  //* Pre-solved linear equation method
+  // double a2 = 0.5 * (c1[0][0] + c1[2][0]);
+  // double a0 = c1[2][0] + c1[1][0] - 2 * a2;
+  // double a1 = 2 * c1[2][0] - 2 * a2 - a0;
+  // double a5 = 0.5 * (c1[0][1] + c1[2][1]);
+  // double a3 = c1[2][1] + c1[1][1] - 2 * a5;
+  // double a4 = 2 * c1[2][1] - 2 * a5 - a3;
+  // double a6 = 0, a7 = 0;
+
+  // m <<
+  //   a0, a1, a2, 0,
+  //   a3, a4, a5, 0,
+  //   a6, a7, 1, 0,
+  //   0, 0, 0, 1;
+
+  // Eigen::Matrix<double,3,3,Eigen::RowMajor> m_a;
+  // m_a <<
+  //   a0, a1, a2,
+  //   a3, a4, a5,
+  //   a6, a7, 1;
+  // Eigen::Matrix<double,3,4,Eigen::RowMajor> s;
+  // s <<
+  //   c0[0][0], c0[1][0], c0[2][0], c0[3][0],
+  //   c0[0][1], c0[1][1], c0[2][1], c0[3][1],
+  //   1, 1, 1, 1;
+  // Eigen::Matrix<double,3,4,Eigen::RowMajor> d;
+  // d <<
+  //   c1[0][0], c1[1][0], c1[2][0], c1[3][0],
+  //   c1[0][1], c1[1][1], c1[2][1], c1[3][1],
+  //   1, 1, 1, 1;
+
+  // std::cout << "m_a * s = \n" << m_a * s << std::endl << "d = \n" << d << std::endl;
+
+  //* Solve Linear Equation Method
+  Eigen::Matrix<double, 8, 8> A;
+  Eigen::Matrix<double, 8, 1> b;
+
+  for(int i = 0; i < 4; i++){
+      double s_x = c0[i][0];
+      double s_y = c0[i][1];
+      double d_x = c1[i][0];
+      double d_y = c1[i][1];
+
+      A.row(2 * i) << s_x, s_y, 1.0, 0.0, 0.0, 0.0, (-d_x)*(s_x), (-d_x)*(s_y);
+      A.row(2 * i + 1) << 0.0, 0.0, 0.0, s_x, s_y, 1.0, (-d_y)*(s_x), (-d_y)*(s_y);
+      b.row(2 * i) << d_x;
+      b.row(2 * i + 1) << d_y;
+  }
+  // std::cout << "A = \n" << A << std::endl << "b = \n" << b << std::endl;
+  Eigen::Matrix<double, 8, 1> h = A.colPivHouseholderQr().solve(b);
+
+  // std::cout << "A * h = " << A * h << std::endl << "b = " << b << std::endl;
+  // std::cout << "h = " << std::endl << h << std::endl;
+  m << 
+    h[0], h[1], h[2], 0,
+    h[3], h[4], h[5], 0,
+    h[6], h[7], 1, 0,
+    0, 0, 0, 1;
+  
+  // std::cout << "m = " << std::endl << m << std::endl;
+
+  // Eigen::Matrix<double, 4, 1> test;
+  // test << -0.5, -0.5, 1, 1;
+  // std::cout << "first point is " << m * test << std::endl;
+  // test << -0.5, 0.5, 1, 1;
+  // test = m * test;
+  // std::cout << "second point is " << test << std::endl;
+  // test[0] /= test[2];
+  // test[1] /= test[2];
+  // test[2] = 1;
+  // std::cout << "but it should be " << test << std::endl;
+  
+  //* Least Square Root Method
+  // Eigen::Matrix<double, 8, 9> A;
+  // Eigen::Matrix<double, 8, 1> b;
+
+  // for(int i = 0; i < 4; i++){
+  //     double s_x = c0[i][0];
+  //     double s_y = c0[i][1];
+  //     double d_x = c1[i][0];
+  //     double d_y = c1[i][1];
+
+  //     A.row(2 * i) << s_x, s_y, 1.0, 0.0, 0.0, 0.0, (-d_x)*(s_x), (-d_x)*(s_y), -d_x;
+  //     A.row(2 * i + 1) << 0.0, 0.0, 0.0, s_x, s_y, 1.0, (-d_y)*(s_x), (-d_y)*(s_y), -d_y;
+  //     b.row(2 * i) << 0;
+  //     b.row(2 * i + 1) << 0;
+  // }
+  // // Eigen::Matrix<double, 9, 1> h = A.colPivHouseholderQr().solve(b);
+  // Eigen::Matrix<double, 9, 1> h = A.fullPivLu().kernel();
+
+  // std::cout << "A * h = " << A * h << std::endl << "b = " << b << std::endl;
+  // // std::cout << "A = " << std::endl << A << std::endl << "b = " << std::endl << b << std::endl;
+  // std::cout << "h = " << h << std::endl;
+
+  // m << 
+  //   h[0], h[1], h[2], 0,
+  //   h[3], h[4], h[5], 0,
+  //   h[6], h[7], h[8], 0,
+  //   0, 0, 0, 1;
+
+  // Eigen::Matrix<double, 4, 1> test;
+  // test << -0.5, -0.5, 1, 1;
+  // std::cout << "first point is " << m * test << std::endl;
+  // test << -0.5, 0.5, 1, 1;
+  // test = m * test;
+  // std::cout << "second point is " << test << std::endl;
+  // test[0] /= test[2];
+  // test[1] /= test[2];
+  // test[2] = 1;
+  // std::cout << "but it should be " << test << std::endl;
 
   return m;
 }
