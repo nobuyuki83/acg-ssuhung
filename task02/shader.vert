@@ -4,6 +4,8 @@
 // https://www.khronos.org/registry/OpenGL/specs/gl/GLSLangSpec.1.20.pdf
 
 #define PI 3.1415926538
+#define F 1 / PI
+
 
 varying vec3 normal;  // normal vector pass to the rasterizer
 uniform float cam_z_pos;  // camera z position specified by main.cpp
@@ -30,8 +32,17 @@ void main()
     // the "back" direction (i.e., +Z direction) will be projected as the unit circle in XY plane.
     // in GLSL, you can use built-in math function (e.g., sqrt, atan).
     // look at page 56 of https://www.khronos.org/registry/OpenGL/specs/gl/GLSLangSpec.1.20.pdf
-    float x1 = x0;
-    float y1 = y0;
+
+    vec3 pos = vec3(x0, y0, z0 - cam_z_pos);
+    // vec3 norm = vec3(0, 0, -1);
+    // float theta = acos(dot(pos, norm) / (length(pos) * length(norm)));
+    float theta = atan(sqrt(pow(x0, 2) + pow(y0, 2)), z0 - cam_z_pos);
+    float r = F * theta;
+
+    float phi = atan(y0, x0);
+    float x1 = r * cos(phi);
+    float y1 = r * sin(phi);
     float z1 = z0;
-    gl_Position = vec4(x1,y1,z1,1); // homogenious coordinate
+    
+    gl_Position = vec4(x1, y1, z1, 1); // homogenious coordinate
 }
