@@ -5,16 +5,10 @@
 
 uniform float time; // current time given from CPU
 
-/**
- * return: signed distance function of a axis aligned box
- * pos: position to evaluate SDF
- * hsize: half size in the XYZ axis
- */
-float sdf_box( vec3 pos, vec3 hsize )
-{
-  vec3 q = abs(pos) - hsize;
-  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
-}
+
+float sdSphere( vec3 pos, vec3 center, float size ) { return length(pos - center) - size; }
+
+float opSubtraction( float d1, float d2 ) { return max(-d1,d2); }
 
 // Definition of singed distance funtion called from
 float SDF(vec3 pos)
@@ -26,8 +20,16 @@ float SDF(vec3 pos)
   // Look Inigo Quilez's article for hints:
   // https://iquilezles.org/articles/distfunctions/
 
-  // for "problem2" the code below is not used.
-  return sdf_box(pos, vec3(0.1,0.2,0.3));
+  float dis = sdSphere(pos, vec3(0.0, 0.0, 0.0), 0.8);
+  for (int i = 0; i < 9; i++){
+    for (int j = 0; j < 9; j++){
+      for (int k = 0; k < 9; k++){
+        float x = sdSphere(pos, vec3(0.2 * j - 0.8, 0.2 * i - 0.8, 0.2 * k - 0.8), 0.12);
+        dis = opSubtraction(x, dis);
+      }
+    }
+  }
+  return dis;
 }
 
 void main()
